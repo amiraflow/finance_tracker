@@ -4,9 +4,14 @@ import com.example.finance_tracker.dto.TransactionDTO;
 import com.example.finance_tracker.entity.*;
 import com.example.finance_tracker.enums.TransactionType;
 import com.example.finance_tracker.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -71,5 +76,27 @@ public class TransactionService {
         result.setCategory(saved.getCategory().getName());
 
         return result;
+    }
+
+    public Page<TransactionDTO> getFiltered(TransactionType type, String categoryName,
+                                            BigDecimal minAmount, BigDecimal maxAmount,
+                                            LocalDate dateFrom, LocalDate dateTo, Pageable pageable) {
+        List<Transaction> transactions = transactionRepo.findAll();
+
+        return transactions.stream()
+                .filter(t -> type == null || t.getType() == type)
+                .filter(t -> categoryName == null || t.getCategory().getName().equalsIgnoreCase(categoryName))
+                .filter(t -> minAmount == null || t.getAmount().compareTo(minAmount) >= 0)
+                .filter(t -> maxAmount == null || t.getAmount().compareTo(maxAmount) <= 0)
+                .filter(t -> dateFrom == null || !t.getDate().isBefore(dateFrom.atStartOfDay()))
+                .filter(t -> dateTo == null || !t.getDate().isAfter(dateTo.atStartOfDay()))
+                .map(TransactionDTO::fromEntity)
+                .toList();
+    }
+
+    public Page<TransactionDTO> getPagedTransactions(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("date").descending());
+        Page<Transaction> paged = transactionRepo.findAll(pageable);
+        return paged.map(TransactionDTO::fromEntity);
     }
 }
