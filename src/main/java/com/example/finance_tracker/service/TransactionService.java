@@ -1,5 +1,6 @@
 package com.example.finance_tracker.service;
 
+import com.example.finance_tracker.dto.TransactionDTO;
 import com.example.finance_tracker.entity.*;
 import com.example.finance_tracker.enums.TransactionType;
 import com.example.finance_tracker.repository.*;
@@ -44,5 +45,31 @@ public class TransactionService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return income.subtract(expense);
+    }
+
+    public TransactionDTO createTransaction(TransactionDTO dto) {
+        Transaction transaction = new Transaction();
+        transaction.setAmount(dto.getAmount());
+        try {
+            TransactionType type = TransactionType.valueOf(dto.getType().toUpperCase());
+            transaction.setType(type);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid transaction type: " + dto.getType());
+        }
+
+        Category category = categoryRepo.findByName(dto.getCategory())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        transaction.setCategory(category);
+
+        Transaction saved = transactionRepo.save(transaction);
+
+        TransactionDTO result = new TransactionDTO();
+        result.setId(saved.getId());
+        result.setAmount(saved.getAmount());
+        result.setType(String.valueOf(saved.getType()));
+        result.setCategory(saved.getCategory().getName());
+
+        return result;
     }
 }
